@@ -1,0 +1,187 @@
+import smtplib
+import imaplib
+import email
+import time
+import pandas as pd
+import os
+import schedule
+from email.message import EmailMessage
+from email.utils import parseaddr
+from deep_translator import GoogleTranslator  # Replacing googletrans with deep-translator
+
+# User Inputs
+EMAIL_ADDRESS = input("Enter your Gmail address: ")
+EMAIL_PASSWORD = input("Enter your Gmail App Password: ")
+
+# Custom Email Templates
+TEMPLATES = {
+    "welcome": input("Enter your 'Welcome' email message: "),
+    "thank_you": input("Enter your 'Thank You' email message: "),
+    "follow_up": input("Enter your 'Follow-Up' email message: "),
+    "custom": input("Enter a custom email message for special cases: "),
+    "reminder": "Don't forget to check our latest products!",
+    "promo": "Special promo just for you! Check it out!",
+    "feedback": "We'd love to hear your feedback!",
+    "thank_you_order": "Thank you for your order, we're preparing it for you!",
+}
+
+# Store custom messages
+CUSTOM_TEMPLATES = {}
+
+def edit_custom_templates():
+    print("Current Custom Templates:")
+    for key in CUSTOM_TEMPLATES:
+        print(f"{key}: {CUSTOM_TEMPLATES[key]}")
+    choice = input("Enter the custom template you want to edit (or 'new' to create one): ").strip().lower()
+    if choice == 'new':
+        custom_name = input("Enter the name for this custom message: ")
+        custom_message = input("Enter your custom email message: ")
+        CUSTOM_TEMPLATES[custom_name] = custom_message
+    elif choice in CUSTOM_TEMPLATES:
+        new_message = input(f"Enter your new message for {choice}: ")
+        CUSTOM_TEMPLATES[choice] = new_message
+    else:
+        print("❌ Invalid choice. No changes made.")
+
+# Function to send bulk emails with chosen template
+def send_bulk_emails():
+    try:
+        file_path = input("Enter the path to your CSV file (e.g., contacts.csv): ")
+        df = pd.read_csv(file_path)
+
+        print("Available templates:", list(TEMPLATES.keys()) + list(CUSTOM_TEMPLATES.keys()))
+        template_choice = input("Which template should be used? ").strip().lower()
+
+        if template_choice not in TEMPLATES and template_choice not in CUSTOM_TEMPLATES:
+            print("❌ Invalid template. Using 'custom' template instead.")
+            template_choice = "custom"
+
+        for index, row in df.iterrows():
+            msg = EmailMessage()
+            msg["From"] = EMAIL_ADDRESS
+            msg["To"] = row["email"]
+            msg["Subject"] = row["subject"]
+            msg.set_content(f"Hey {row['name']},\n\n{TEMPLATES.get(template_choice, CUSTOM_TEMPLATES.get(template_choice, TEMPLATES['custom']))}\n\nBest,\nYour Bot")
+
+            if "attachment" in df.columns and pd.notna(row["attachment"]):
+                attachment_path = row["attachment"]
+                if os.path.exists(attachment_path):
+                    with open(attachment_path, "rb") as file:
+                        msg.add_attachment(file.read(), maintype="application", subtype="octet-stream", filename=os.path.basename(attachment_path))
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+                smtp.send_message(msg)
+
+            print(f"✅ Email sent to {row['email']}")
+            time.sleep(2)  # Delay to avoid spam detection
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+
+# Function to auto-reply based on custom templates
+def auto_reply():
+    try:
+        mail = imaplib.IMAP4_SSL("imap.gmail.com")
+        mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        mail.select("inbox")
+
+        status, messages = mail.search(None, 'UNSEEN')
+        email_ids = messages[0].split()
+
+        if len(email_ids) == 0:
+            print("📭 No unread emails.")
+            return
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+
+            for email_id in email_ids:
+                status, data = mail.fetch(email_id, "(RFC822)")
+                raw_email = data[0][1]
+                msg = email.message_from_bytes(raw_email)
+
+                sender_email = parseaddr(msg["From"])[1]
+                subject = msg["Subject"]
+
+                print(f"📩 New email from {sender_email} with subject: {subject}")
+                print("Choose a response template:", list(TEMPLATES.keys()) + list(CUSTOM_TEMPLATES.keys()))
+                template_choice = input("Which template should be used for this reply? ").strip().lower()
+
+                if template_choice not in TEMPLATES and template_choice not in CUSTOM_TEMPLATES:
+                    print("❌ Invalid choice. Using 'custom' template instead.")
+                    template_choice = "custom"
+
+                reply = EmailMessage()
+                reply["From"] = EMAIL_ADDRESS
+                reply["To"] = sender_email
+                reply["Subject"] = "Re: " + subject
+                reply.set_content(TEMPLATES.get(template_choice, CUSTOM_TEMPLATES.get(template_choice, TEMPLATES['custom'])))
+
+                smtp.send_message(reply)
+                print(f"✅ Auto-reply sent to {sender_email}")
+
+        mail.logout()
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+
+# Function to schedule emails
+def schedule_email():
+    try:
+        email_to = input("Enter recipient email: ")
+        subject = input("Enter email subject: ")
+
+        print("Available templates:", list(TEMPLATES.keys()) + list(CUSTOM_TEMPLATES.keys()))
+        template_choice = input("Which template should be used? ").strip().lower()
+
+        if template_choice not in TEMPLATES and template_choice not in CUSTOM_TEMPLATES:
+            print("❌ Invalid choice. Using 'custom' template instead.")
+            template_choice = "custom"
+
+        send_time = input("Enter time to send email (HH:MM format, 24-hour clock): ")
+
+        def job():
+            msg = EmailMessage()
+            msg["From"] = EMAIL_ADDRESS
+            msg["To"] = email_to
+            msg["Subject"] = subject
+            msg.set_content(TEMPLATES.get(template_choice, CUSTOM_TEMPLATES.get(template_choice, TEMPLATES['custom'])))
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+                smtp.send_message(msg)
+
+            print(f"✅ Scheduled email sent to {email_to}")
+
+        schedule.every().day.at(send_time).do(job)
+        print(f"📅 Email scheduled for {send_time}")
+
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+
+# Main Menu
+def main():
+    print("\n📧 ULTIMATE CUSTOMIZABLE GMAIL BOT 📧")
+    print("1. Send bulk emails (CSV)")
+    print("2. Auto-reply to unread emails (manually select response)")
+    print("3. Schedule an email")
+    print("4. Edit or add custom templates")
+    choice = input("Choose an option (1-4): ")
+
+    if choice == "1":
+        send_bulk_emails()
+    elif choice == "2":
+        auto_reply()
+    elif choice == "3":
+        schedule_email()
+    elif choice == "4":
+        edit_custom_templates()
+    else:
+        print("❌ Invalid option. Restart the program.")
+
+main()
