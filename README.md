@@ -1,132 +1,135 @@
-Follow these steps to set up the Gmail Bulk Email Bot on your computer. This bot will help you send bulk emails, auto-reply to unread emails, and schedule emails to be sent later.
+Ultimate Customizable Gmail Bot
 
-Step 1: Download & Install Python
+This Python script allows you to send bulk emails, set up auto-replies, schedule emails, and manage custom email templates using your Gmail account.
 
-1.1 Download Python
-	•	Go to Python’s official website.
-	•	Download the latest version of Python 3 (make sure you download Python 3, not Python 2).
-	•	Install it by running the downloaded file and follow the installation steps.
-	•	During installation, check the box that says “Add Python to PATH”.
+Step 1: Install Python
 
-1.2 Check Python Installation
-	•	After installing Python, open the command prompt (Windows) or terminal (Mac/Linux).
-	•	Type the following command and hit enter:
+If you don’t have Python installed, follow these instructions:
+
+For Windows:
+	1.	Download Python from the official website: Python Downloads
+	2.	Run the installer and make sure to check the box “Add Python to PATH” during the installation.
+	3.	Verify the installation by opening a Command Prompt and typing:
 
 python --version
 
+It should show the installed Python version.
 
-	•	If it shows a version number (e.g., Python 3.x.x), Python is installed correctly!
+For macOS:
+	1.	Open the terminal and install Python using Homebrew (if you don’t have Homebrew, install it from here):
 
-Step 2: Install Required Libraries
-
-You need to install a few Python libraries for the bot to work. Follow these steps:
-
-2.1 Install Libraries
-	•	Open your command prompt (Windows) or terminal (Mac/Linux).
-	•	Run the following command to install the required libraries:
-
-pip install pandas smtplib imaplib email deep-translator schedule
+brew install python
 
 
+	2.	Verify the installation by typing:
 
-This will install everything the script needs to send emails and interact with Gmail.
-
-Step 3: Download the Gmail Bulk Email Bot Script
-
-3.1 Get the Bot Script
-	•	Download the bot script from this repository or file (wherever you have it hosted or stored).
-	•	Save it on your computer. For example, save it in a folder called “GmailBulkEmailBot”.
-
-3.2 Open the Script
-	•	Use any text editor (like Notepad or VS Code) to open the bot script (e.g., gmail_bulk_email_bot.py).
-
-Step 4: Set Up Your Gmail Account
-
-4.1 Use an App Password (Not Your Gmail Password)
-	•	Important: Don’t use your regular Gmail password. You must create an App Password. Here’s how:
-	1.	Go to your Google Account.
-	2.	In the “Security” section, turn on 2-step verification (if you haven’t already).
-	3.	Once 2-step verification is enabled, scroll down and click on App Passwords.
-	4.	Generate an App Password (choose “Mail” and “Windows Computer” or “Other” if you prefer).
-	5.	Copy the password shown—this will be used in the script.
-
-4.2 Edit Gmail Credentials in the Script
-	•	In the script, find this section:
-
-EMAIL_ADDRESS = 'your_email@gmail.com'  # Replace with your Gmail address
-EMAIL_PASSWORD = 'your_app_password'   # Replace with your Gmail App Password
+python3 --version
 
 
-	•	Replace 'your_email@gmail.com' with your Gmail address.
-	•	Replace 'your_app_password' with the App Password you just generated.
 
-Step 5: Set Up Email Templates (Optional)
+For Linux:
+	1.	Open the terminal and use the following command to install Python:
 
-You can customize the email templates that the bot will use to send emails. Here’s how:
+sudo apt-get install python3
 
-5.1 Find Templates in the Script
-	•	In the script, there’s a section with pre-made templates:
+
+	2.	Verify the installation by typing:
+
+python3 --version
+
+Step 2: Install Dependencies
+
+The script requires a few external libraries. To install them, open your terminal (or Command Prompt on Windows) and run the following command:
+
+pip install pandas deep-translator schedule
+
+This will install the following dependencies:
+	•	pandas: For reading and processing CSV files.
+	•	deep-translator: For translation support.
+	•	schedule: For scheduling emails.
+
+Note:
+
+smtplib, imaplib, and email are built-in libraries in Python, so you don’t need to install them separately.
+
+Step 3: Update Your Script
+
+Before running the script, you’ll need to update some details:
+
+1. Gmail Credentials
+
+In the script, find the following lines and replace them with your Gmail account details:
+
+EMAIL_ADDRESS = "your_email@gmail.com"  # Replace with your Gmail address
+EMAIL_PASSWORD = "your_app_password"  # Replace with your Gmail App Password
+
+Important:
+Use your Gmail App Password instead of your regular Gmail password. If you don’t have an app password, follow these steps to create one:
+	1.	Go to Google Account Security.
+	2.	Under “Signing in to Google,” click App Passwords.
+	3.	Generate a new app password and use that instead of your regular Gmail password.
+
+2. Customize Your Email Templates
+
+You can customize the default email templates directly in the script. Find the TEMPLATES dictionary in the script:
 
 TEMPLATES = {
-    "welcome": "Welcome to our service!",
+    "welcome": "Welcome to our service! We are excited to have you!",
     "thank_you": "Thank you for your order! We appreciate your support.",
-    "follow_up": "Just following up on your recent inquiry.",
-    "custom": "Custom message for special cases.",
-    # etc...
+    "follow_up": "Just following up to ensure everything went well.",
+    "custom": "Enter your custom message here.",
+    "reminder": "Don't forget to check our latest products!",
+    "promo": "Special promo just for you! Check it out!",
+    "feedback": "We'd love to hear your feedback!",
+    "thank_you_order": "Thank you for your order, we're preparing it for you!",
 }
 
+You can change the content of each template as needed.
 
-	•	Feel free to change any text inside the quotation marks to your custom message. For example:
+3. Prepare Your CSV File
 
-"thank_you": "Thanks for choosing our service, we appreciate you!"
+The script requires a CSV file with contact information to send bulk emails. Make sure your CSV file has the following columns:
+	•	email: Recipient email address
+	•	name: Recipient’s name
+	•	subject: Subject of the email (optional)
+	•	attachment: Path to the attachment (optional)
 
-Step 6: Prepare the CSV File for Bulk Emails
-
-The bot needs a CSV file with contact details for sending bulk emails.
-
-6.1 Create the CSV File
-	•	Open a spreadsheet program like Excel or Google Sheets.
-	•	Create columns for email, name, subject, and attachment (optional).
-	•	Example CSV file (contacts.csv):
+Example CSV format:
 
 email,name,subject,attachment
-recipient1@example.com,John Doe,Welcome to our service!,path/to/file1.pdf
-recipient2@example.com,Jane Smith,Thank you for your order!,path/to/file2.jpg
+example@email.com,John,Welcome Email,/path/to/file.jpg
+another@email.com,Alice,Thank You Email,/path/to/file.pdf
 
+Step 4: Run the Script
 
-	•	Save this file as contacts.csv.
+Once you have updated the script with your Gmail credentials, templates, and prepared your CSV file, you’re ready to run the script!
+	1.	Save the script to a file, for example, gmail_bot.py.
+	2.	Open your terminal (or Command Prompt on Windows) and navigate to the folder where the script is saved.
+	3.	Run the script by typing:
 
-Step 7: Run the Bot
+python gmail_bot.py
 
-7.1 Start the Script
-	•	Go back to your command prompt or terminal.
-	•	Navigate to the folder where you saved the script (use cd path/to/folder to change directories).
-	•	Run the script using the following command:
+The script will prompt you to choose an option to send bulk emails, set up auto-replies, or schedule emails.
 
-python gmail_bulk_email_bot.py
+Step 5: Optional - Running the Script in Google Colab
 
+If you prefer to run the script in Google Colab:
+	1.	Go to Google Colab.
+	2.	Create a new notebook.
+	3.	Copy the entire script into a cell in the notebook.
+	4.	Run the script by pressing Shift + Enter.
 
+Important Notes for Google Colab:
+	•	Make sure to upload the CSV file to your Google Colab environment by clicking on the file icon on the left sidebar and then uploading your file.
+	•	You may need to change how you handle file paths in the script since Google Colab runs in a cloud environment.
 
-7.2 Using the Bot
-	•	The bot will show a menu with options. For example:
+Step 6: Troubleshooting
 
-1. Send Bulk Emails
-2. Auto-Reply to Unread Emails
-3. Schedule Emails
-4. Edit or Add Custom Templates
-5. Exit
+If you encounter any issues, here are a few things to check:
+	1.	Invalid Gmail App Password: Make sure you’ve generated and used the correct Gmail App Password (not your regular Gmail password).
+	2.	CSV Formatting: Ensure that your CSV file is properly formatted (with the correct column headers).
+	3.	Missing Libraries: Ensure you’ve installed all the required libraries by running pip install pandas deep-translator schedule.
 
+Enjoy using your Ultimate Customizable Gmail Bot!
 
-	•	Select the option you want by typing the number and hitting Enter.
-
-Troubleshooting
-	•	“SMTP Error or Connection Error”
-	•	Make sure you’re connected to the internet and check Gmail’s SMTP settings (the script uses smtp.gmail.com on port 465).
-	•	“Invalid Template”
-	•	Make sure you’re using a template name that exists in the script (like "thank_you", "welcome", etc.). You can add your own templates in the script.
-
-License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-Let me know if anything is unclear or if you need more help!
+Let me know if this works for you, and if anything else needs to be changed!
