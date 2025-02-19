@@ -9,16 +9,16 @@ from email.message import EmailMessage
 from email.utils import parseaddr
 from deep_translator import GoogleTranslator  # Replacing googletrans with deep-translator
 
-# User Inputs
-EMAIL_ADDRESS = input("Enter your Gmail address: ")
-EMAIL_PASSWORD = input("Enter your Gmail App Password: ")
+# Hardcoded Gmail Credentials (Change these yourself)
+EMAIL_ADDRESS = 'your_email@gmail.com'  # Replace with your Gmail address
+EMAIL_PASSWORD = 'your_app_password'  # Replace with your Gmail App Password
 
-# Custom Email Templates
+# Hardcoded Custom Email Templates (Change these yourself)
 TEMPLATES = {
-    "welcome": input("Enter your 'Welcome' email message: "),
-    "thank_you": input("Enter your 'Thank You' email message: "),
-    "follow_up": input("Enter your 'Follow-Up' email message: "),
-    "custom": input("Enter a custom email message for special cases: "),
+    "welcome": "Welcome to our service!",
+    "thank_you": "Thank you for your order! We appreciate your support.",
+    "follow_up": "Just following up on your recent inquiry.",
+    "custom": "Custom message for special cases.",
     "reminder": "Don't forget to check our latest products!",
     "promo": "Special promo just for you! Check it out!",
     "feedback": "We'd love to hear your feedback!",
