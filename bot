@@ -1,187 +1,243 @@
-import smtplib
 import imaplib
 import email
 import time
 import pandas as pd
 import os
-import schedule
+import smtplib  # Add this import statement
 from email.message import EmailMessage
 from email.utils import parseaddr
-from deep_translator import GoogleTranslator  # Replacing googletrans with deep-translator
+from datetime import datetime, timedelta
+import random
+from textblob import TextBlob
+import re
 
-# Hardcoded Gmail Credentials (Change these yourself)
-EMAIL_ADDRESS = 'your_email@gmail.com'  # Replace with your Gmail address
-EMAIL_PASSWORD = 'your_app_password'  # Replace with your Gmail App Password
+# Email credentials
+EMAIL_ADDRESS = "semaxbeams@gmail.com"
+EMAIL_PASSWORD = "wqpa qqsu povt wvsj"
 
-# Hardcoded Custom Email Templates (Change these yourself)
+# Auto-reply templates categorized by sentiment and purpose
 TEMPLATES = {
-    "welcome": "Welcome to our service!",
-    "thank_you": "Thank you for your order! We appreciate your support.",
-    "follow_up": "Just following up on your recent inquiry.",
-    "custom": "Custom message for special cases.",
-    "reminder": "Don't forget to check our latest products!",
-    "promo": "Special promo just for you! Check it out!",
-    "feedback": "We'd love to hear your feedback!",
-    "thank_you_order": "Thank you for your order, we're preparing it for you!",
+    "positive": {
+        "general": "Thank you for your positive message! I'm glad to hear from you and will respond in detail soon.",
+        "feedback": "I really appreciate your positive feedback! Thank you for taking the time to share your thoughts.",
+        "request": "Thanks for your request! I'm happy to help and will get back to you with more information shortly."
+    },
+    "negative": {
+        "general": "I understand your concerns and want to address them properly. I'll review this carefully and respond soon.",
+        "complaint": "I apologize for any inconvenience. Your feedback is important to us, and I'll look into this matter personally.",
+        "urgent": "I understand this is an urgent matter. I'm treating this as a priority and will respond as soon as possible."
+    },
+    "neutral": {
+        "general": "Thank you for your message. I'll review it and get back to you soon.",
+        "inquiry": "I've received your inquiry and will provide you with the information you need shortly.",
+        "follow_up": "I confirm receipt of your message and will follow up with a detailed response."
+    },
+    "urgent": {
+        "positive": "I see this is urgent and appreciate your positive approach. I'll prioritize this and respond very soon.",
+        "negative": "I understand this is urgent and requires immediate attention. I'm looking into this right away.",
+        "neutral": "I've received your urgent message and will handle it with priority."
+    }
 }
 
-# Store custom messages
-CUSTOM_TEMPLATES = {}
+class GmailBot:
+    def __init__(self):
+        self.last_check_time = time.time()
+        self.auto_reply_sent = set()  # Track emails we've already replied to
 
-def edit_custom_templates():
-    print("Current Custom Templates:")
-    for key in CUSTOM_TEMPLATES:
-        print(f"{key}: {CUSTOM_TEMPLATES[key]}")
-    choice = input("Enter the custom template you want to edit (or 'new' to create one): ").strip().lower()
-    if choice == 'new':
-        custom_name = input("Enter the name for this custom message: ")
-        custom_message = input("Enter your custom email message: ")
-        CUSTOM_TEMPLATES[custom_name] = custom_message
-    elif choice in CUSTOM_TEMPLATES:
-        new_message = input(f"Enter your new message for {choice}: ")
-        CUSTOM_TEMPLATES[choice] = new_message
-    else:
-        print("❌ Invalid choice. No changes made.")
+    def connect_gmail(self):
+        """Connect to Gmail IMAP and SMTP servers"""
+        try:
+            self.imap = imaplib.IMAP4_SSL("imap.gmail.com")
+            self.imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            self.smtp = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+            self.smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            return True
+        except Exception as e:
+            print(f"❌ Connection error: {e}")
+            return False
 
-# Function to send bulk emails with chosen template
-def send_bulk_emails():
+    def get_email_content(self, email_message):
+        """Extract text content from email"""
+        content = ""
+        if email_message.is_multipart():
+            for part in email_message.walk():
+                if part.get_content_type() == "text/plain":
+                    content += part.get_payload(decode=True).decode()
+        else:
+            content = email_message.get_payload(decode=True).decode()
+        return content
+
+    def analyze_sentiment(self, text):
+        """Analyze text sentiment using TextBlob"""
+        analysis = TextBlob(text)
+        
+        # Get polarity score (-1 to 1)
+        polarity = analysis.sentiment.polarity
+        
+        # Determine sentiment category
+        if polarity > 0.1:
+            return "positive"
+        elif polarity < -0.1:
+            return "negative"
+        else:
+            return "neutral"
+
+    def detect_urgency(self, subject, content):
+        """Detect if the email is urgent"""
+        urgent_keywords = ['urgent', 'asap', 'emergency', 'immediate', 'priority']
+        text = (subject + " " + content).lower()
+        return any(keyword in text for keyword in urgent_keywords)
+
+    def detect_email_type(self, subject, content):
+        """Detect the type of email"""
+        text = (subject + " " + content).lower()
+        
+        if any(word in text for word in ['feedback', 'review', 'rating']):
+            return 'feedback'
+        elif any(word in text for word in ['help', 'support', 'assist', 'how to']):
+            return 'request'
+        elif any(word in text for word in ['complaint', 'issue', 'problem', 'wrong']):
+            return 'complaint'
+        elif any(word in text for word in ['question', 'inquiry', 'information']):
+            return 'inquiry'
+        else:
+            return 'general'
+
+    def choose_template(self, sentiment, is_urgent, email_type):
+        """Choose appropriate response template based on analysis"""
+        if is_urgent:
+            return TEMPLATES["urgent"][sentiment]
+        
+        if sentiment in TEMPLATES and email_type in TEMPLATES[sentiment]:
+            return TEMPLATES[sentiment][email_type]
+        
+        return TEMPLATES[sentiment]["general"]
+
+    def check_new_emails(self):
+    """Check for new unread emails and handle them"""
     try:
-        file_path = input("Enter the path to your CSV file (e.g., contacts.csv): ")
-        df = pd.read_csv(file_path)
+        self.imap.select("INBOX")
+        _, messages = self.imap.search(None, "UNSEEN")
+        
+        for num in messages[0].split():
+            _, msg_data = self.imap.fetch(num, "(RFC822)")
+            email_body = msg_data[0][1]
+            email_message = email.message_from_bytes(email_body)
+            
+            sender = email_message["From"]
+            subject = email_message["Subject"] or ""
+            content = self.get_email_content(email_message)
+            
+            # Skip if we've already replied to this sender recently
+            if sender in self.auto_reply_sent:
+                continue
+            
+            # Analyze email
+            sentiment = self.analyze_sentiment(content)
+            is_urgent = self.detect_urgency(subject, content)
+            email_type = self.detect_email_type(subject, content)
+            
+            # Only send auto-reply if the email is urgent
+            if is_urgent:
+                self.send_auto_reply(sender, sentiment, is_urgent, email_type)
+                self.auto_reply_sent.add(sender)
+            
+            # Organize email
+            self.organize_email(num, subject, sentiment, is_urgent)
+            
+            print(f"✅ Processed email from: {sender}")
+            print(f"   Sentiment: {sentiment}")
+            print(f"   Urgent: {'Yes' if is_urgent else 'No'}")
+            print(f"   Type: {email_type}")
+            
+    except Exception as e:
+        print(f"❌ Error checking emails: {e}")
+                
+        except Exception as e:
+            print(f"❌ Error checking emails: {e}")
 
-        print("Available templates:", list(TEMPLATES.keys()) + list(CUSTOM_TEMPLATES.keys()))
-        template_choice = input("Which template should be used? ").strip().lower()
-
-        if template_choice not in TEMPLATES and template_choice not in CUSTOM_TEMPLATES:
-            print("❌ Invalid template. Using 'custom' template instead.")
-            template_choice = "custom"
-
-        for index, row in df.iterrows():
+    def send_auto_reply(self, recipient, sentiment, is_urgent, email_type):
+        """Send an automated reply based on email analysis"""
+        try:
             msg = EmailMessage()
             msg["From"] = EMAIL_ADDRESS
-            msg["To"] = row["email"]
-            msg["Subject"] = row["subject"]
-            msg.set_content(f"Hey {row['name']},\n\n{TEMPLATES.get(template_choice, CUSTOM_TEMPLATES.get(template_choice, TEMPLATES['custom']))}\n\nBest,\nYour Bot")
+            msg["To"] = recipient
+            msg["Subject"] = "Re: " + ("Urgent Response" if is_urgent else "Automated Response")
+            
+            # Choose appropriate template
+            template = self.choose_template(sentiment, is_urgent, email_type)
+            msg.set_content(template)
+            
+            self.smtp.send_message(msg)
+            print(f"✅ Auto-reply sent to {recipient} (Sentiment: {sentiment}, Urgent: {is_urgent})")
+            
+        except Exception as e:
+            print(f"❌ Error sending auto-reply: {e}")
 
-            if "attachment" in df.columns and pd.notna(row["attachment"]):
-                attachment_path = row["attachment"]
-                if os.path.exists(attachment_path):
-                    with open(attachment_path, "rb") as file:
-                        msg.add_attachment(file.read(), maintype="application", subtype="octet-stream", filename=os.path.basename(attachment_path))
+    def organize_email(self, email_id, subject, sentiment, is_urgent):
+        """Organize emails into labels based on analysis"""
+        try:
+            # Create labels based on sentiment and urgency
+            labels = []
+            
+            if is_urgent:
+                labels.append("Urgent")
+            
+            if sentiment == "positive":
+                labels.append("Positive")
+            elif sentiment == "negative":
+                labels.append("Negative")
+            
+            # Apply labels
+            for label in labels:
+                try:
+                    self.imap.create(label)
+                except:
+                    pass  # Label might already exist
+                self.imap.store(email_id, "+X-GM-LABELS", label)
+            
+        except Exception as e:
+            print(f"❌ Error organizing email: {e}")
 
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-                smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-                smtp.send_message(msg)
+    def clean_old_tracking(self):
+        """Clean up old entries from auto_reply_sent set"""
+        self.auto_reply_sent.clear()
 
-            print(f"✅ Email sent to {row['email']}")
-            time.sleep(2)  # Delay to avoid spam detection
-
-    except Exception as e:
-        print(f"❌ Error: {e}")
-
-# Function to auto-reply based on custom templates
-def auto_reply():
-    try:
-        mail = imaplib.IMAP4_SSL("imap.gmail.com")
-        mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        mail.select("inbox")
-
-        status, messages = mail.search(None, 'UNSEEN')
-        email_ids = messages[0].split()
-
-        if len(email_ids) == 0:
-            print("📭 No unread emails.")
+    def run(self):
+        """Main bot loop"""
+        print("🤖 Smart Gmail Bot starting...")
+        print("Features enabled:")
+        print("- Sentiment Analysis")
+        print("- Urgency Detection")
+        print("- Email Type Classification")
+        print("- Smart Template Selection")
+        print("- Automatic Email Organization")
+        
+        if not self.connect_gmail():
+            print("❌ Failed to connect to Gmail. Please check your credentials.")
             return
+        
+        print("✅ Connected to Gmail successfully!")
+        print("🔄 Bot is running... Press Ctrl+C to stop")
+        
+        try:
+            while True:
+                self.check_new_emails()
+                
+                # Clean up tracking every 24 hours
+                if time.time() - self.last_check_time > 24*60*60:
+                    self.clean_old_tracking()
+                    self.last_check_time = time.time()
+                
+                # Wait 1 minute before checking again
+                time.sleep(60)
+                
+        except KeyboardInterrupt:
+            print("\n👋 Stopping Gmail Bot...")
+        finally:
+            self.imap.logout()
+            self.smtp.quit()
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-
-            for email_id in email_ids:
-                status, data = mail.fetch(email_id, "(RFC822)")
-                raw_email = data[0][1]
-                msg = email.message_from_bytes(raw_email)
-
-                sender_email = parseaddr(msg["From"])[1]
-                subject = msg["Subject"]
-
-                print(f"📩 New email from {sender_email} with subject: {subject}")
-                print("Choose a response template:", list(TEMPLATES.keys()) + list(CUSTOM_TEMPLATES.keys()))
-                template_choice = input("Which template should be used for this reply? ").strip().lower()
-
-                if template_choice not in TEMPLATES and template_choice not in CUSTOM_TEMPLATES:
-                    print("❌ Invalid choice. Using 'custom' template instead.")
-                    template_choice = "custom"
-
-                reply = EmailMessage()
-                reply["From"] = EMAIL_ADDRESS
-                reply["To"] = sender_email
-                reply["Subject"] = "Re: " + subject
-                reply.set_content(TEMPLATES.get(template_choice, CUSTOM_TEMPLATES.get(template_choice, TEMPLATES['custom'])))
-
-                smtp.send_message(reply)
-                print(f"✅ Auto-reply sent to {sender_email}")
-
-        mail.logout()
-
-    except Exception as e:
-        print(f"❌ Error: {e}")
-
-# Function to schedule emails
-def schedule_email():
-    try:
-        email_to = input("Enter recipient email: ")
-        subject = input("Enter email subject: ")
-
-        print("Available templates:", list(TEMPLATES.keys()) + list(CUSTOM_TEMPLATES.keys()))
-        template_choice = input("Which template should be used? ").strip().lower()
-
-        if template_choice not in TEMPLATES and template_choice not in CUSTOM_TEMPLATES:
-            print("❌ Invalid choice. Using 'custom' template instead.")
-            template_choice = "custom"
-
-        send_time = input("Enter time to send email (HH:MM format, 24-hour clock): ")
-
-        def job():
-            msg = EmailMessage()
-            msg["From"] = EMAIL_ADDRESS
-            msg["To"] = email_to
-            msg["Subject"] = subject
-            msg.set_content(TEMPLATES.get(template_choice, CUSTOM_TEMPLATES.get(template_choice, TEMPLATES['custom'])))
-
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-                smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-                smtp.send_message(msg)
-
-            print(f"✅ Scheduled email sent to {email_to}")
-
-        schedule.every().day.at(send_time).do(job)
-        print(f"📅 Email scheduled for {send_time}")
-
-        while True:
-            schedule.run_pending()
-            time.sleep(1)
-
-    except Exception as e:
-        print(f"❌ Error: {e}")
-
-# Main Menu
-def main():
-    print("\n📧 ULTIMATE CUSTOMIZABLE GMAIL BOT 📧")
-    print("1. Send bulk emails (CSV)")
-    print("2. Auto-reply to unread emails (manually select response)")
-    print("3. Schedule an email")
-    print("4. Edit or add custom templates")
-    choice = input("Choose an option (1-4): ")
-
-    if choice == "1":
-        send_bulk_emails()
-    elif choice == "2":
-        auto_reply()
-    elif choice == "3":
-        schedule_email()
-    elif choice == "4":
-        edit_custom_templates()
-    else:
-        print("❌ Invalid option. Restart the program.")
-
-main()
+if __name__ == "__main__":
+    bot = GmailBot()
+    bot.run()
