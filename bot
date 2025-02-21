@@ -12,8 +12,8 @@ from textblob import TextBlob
 import re
 
 # Email credentials
-EMAIL_ADDRESS = "semaxbeams@gmail.com"
-EMAIL_PASSWORD = "wqpa qqsu povt wvsj"
+EMAIL_ADDRESS = "PUT YOUR EMAIL HERE"
+EMAIL_PASSWORD = "PUT YOUR APP PASSWORD HEREj"
 
 # Auto-reply templates categorized by sentiment and purpose
 TEMPLATES = {
