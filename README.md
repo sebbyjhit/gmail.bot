@@ -1,135 +1,62 @@
-Ultimate Customizable Gmail Bot
+# Smart Gmail Bot
 
-This Python script allows you to send bulk emails, set up auto-replies, schedule emails, and manage custom email templates using your Gmail account.
+This Smart Gmail Bot automatically replies to emails based on sentiment analysis, urgency detection, and email type classification. It also organizes emails into labels based on these criteria.
 
-Step 1: Install Python
+## Features
 
-If you don’t have Python installed, follow these instructions:
+- Sentiment Analysis
+- Urgency Detection
+- Email Type Classification
+- Smart Template Selection
+- Automatic Email Organization
 
-For Windows:
-	1.	Download Python from the official website: Python Downloads
-	2.	Run the installer and make sure to check the box “Add Python to PATH” during the installation.
-	3.	Verify the installation by opening a Command Prompt and typing:
+## Requirements
 
-python --version
+- Python 3.6+
+- Required Python libraries:
+  - `imaplib`
+  - `email`
+  - `pandas`
+  - `smtplib`
+  - `textblob`
 
-It should show the installed Python version.
+## Installation
 
-For macOS:
-	1.	Open the terminal and install Python using Homebrew (if you don’t have Homebrew, install it from here):
+1. Clone the repository or download the script.
 
-brew install python
+2. Install the required Python libraries:
+   ```sh
+   pip install pandas textblob
+   Enable "Less secure app access" in your Gmail account settings:
+
+Go to your Google Account. <vscode_annotation details='%5B%7B%22title%22%3A%22hardcoded-credentials%22%2C%22description%22%3A%22Embedding%20credentials%20in%20source%20code%20risks%20unauthorized%20access%22%7D%5D'> </vscode_annotation> - Select Security.
+Under "Less secure app access," turn on "Allow less secure apps."
+Enable IMAP in your Gmail account settings:
+
+Go to your Gmail account.
+Select Settings (gear icon) > See all settings.
+Go to the "Forwarding and POP/IMAP" tab.
+In the "IMAP access" section, select "Enable IMAP."
+Configuration
+Replace the placeholders in the script with your actual email credentials. You can use environment variables for better security.
+ Email credentials
+EMAIL_ADDRESS = "your_email@gmail.com"
+EMAIL_PASSWORD = "your_password"
 
 
-	2.	Verify the installation by typing:
+Run the script:
+The bot will start and continuously check for new unread emails. It will process each email based on sentiment, urgency, and type, send auto-replies if necessary, and organize emails into labels.
 
-python3 --version
+To stop the bot, press Ctrl+C.
 
-
-
-For Linux:
-	1.	Open the terminal and use the following command to install Python:
-
-sudo apt-get install python3
+Example
+Here is an example of how to set up and run the bot:
 
 
-	2.	Verify the installation by typing:
+Install the required libraries:
+pip install pandas textblob (and the others listed on top)
+Configure your email credentials in the script or using environment variables.
 
-python3 --version
+Run the bot:
+python (gmail_bot.py)
 
-Step 2: Install Dependencies
-
-The script requires a few external libraries. To install them, open your terminal (or Command Prompt on Windows) and run the following command:
-
-pip install pandas deep-translator schedule
-
-This will install the following dependencies:
-	•	pandas: For reading and processing CSV files.
-	•	deep-translator: For translation support.
-	•	schedule: For scheduling emails.
-
-Note:
-
-smtplib, imaplib, and email are built-in libraries in Python, so you don’t need to install them separately.
-
-Step 3: Update Your Script
-
-Before running the script, you’ll need to update some details:
-
-1. Gmail Credentials
-
-In the script, find the following lines and replace them with your Gmail account details:
-
-EMAIL_ADDRESS = "your_email@gmail.com"  # Replace with your Gmail address
-EMAIL_PASSWORD = "your_app_password"  # Replace with your Gmail App Password
-
-Important:
-Use your Gmail App Password instead of your regular Gmail password. If you don’t have an app password, follow these steps to create one:
-	1.	Go to Google Account Security.
-	2.	Under “Signing in to Google,” click App Passwords.
-	3.	Generate a new app password and use that instead of your regular Gmail password.
-
-2. Customize Your Email Templates
-
-You can customize the default email templates directly in the script. Find the TEMPLATES dictionary in the script:
-
-TEMPLATES = {
-    "welcome": "Welcome to our service! We are excited to have you!",
-    "thank_you": "Thank you for your order! We appreciate your support.",
-    "follow_up": "Just following up to ensure everything went well.",
-    "custom": "Enter your custom message here.",
-    "reminder": "Don't forget to check our latest products!",
-    "promo": "Special promo just for you! Check it out!",
-    "feedback": "We'd love to hear your feedback!",
-    "thank_you_order": "Thank you for your order, we're preparing it for you!",
-}
-
-You can change the content of each template as needed.
-
-3. Prepare Your CSV File
-
-The script requires a CSV file with contact information to send bulk emails. Make sure your CSV file has the following columns:
-	•	email: Recipient email address
-	•	name: Recipient’s name
-	•	subject: Subject of the email (optional)
-	•	attachment: Path to the attachment (optional)
-
-Example CSV format:
-
-email,name,subject,attachment
-example@email.com,John,Welcome Email,/path/to/file.jpg
-another@email.com,Alice,Thank You Email,/path/to/file.pdf
-
-Step 4: Run the Script
-
-Once you have updated the script with your Gmail credentials, templates, and prepared your CSV file, you’re ready to run the script!
-	1.	Save the script to a file, for example, gmail_bot.py.
-	2.	Open your terminal (or Command Prompt on Windows) and navigate to the folder where the script is saved.
-	3.	Run the script by typing:
-
-python gmail_bot.py
-
-The script will prompt you to choose an option to send bulk emails, set up auto-replies, or schedule emails.
-
-Step 5: Optional - Running the Script in Google Colab
-
-If you prefer to run the script in Google Colab:
-	1.	Go to Google Colab.
-	2.	Create a new notebook.
-	3.	Copy the entire script into a cell in the notebook.
-	4.	Run the script by pressing Shift + Enter.
-
-Important Notes for Google Colab:
-	•	Make sure to upload the CSV file to your Google Colab environment by clicking on the file icon on the left sidebar and then uploading your file.
-	•	You may need to change how you handle file paths in the script since Google Colab runs in a cloud environment.
-
-Step 6: Troubleshooting
-
-If you encounter any issues, here are a few things to check:
-	1.	Invalid Gmail App Password: Make sure you’ve generated and used the correct Gmail App Password (not your regular Gmail password).
-	2.	CSV Formatting: Ensure that your CSV file is properly formatted (with the correct column headers).
-	3.	Missing Libraries: Ensure you’ve installed all the required libraries by running pip install pandas deep-translator schedule.
-
-Enjoy using your Ultimate Customizable Gmail Bot!
-
-Let me know if this works for you, and if anything else needs to be changed!
